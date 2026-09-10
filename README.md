@@ -1,30 +1,90 @@
-# Motion Manifesto: Architecture Baseline
+# @grafikui/motion
 
 > A living argument for intentional motion in UI design systems.
 
-**Live URL:** [motionmanifesto.co.uk](https://motionmanifesto.co.uk)  
+**npm:** [`@grafikui/motion`](https://www.npmjs.com/package/@grafikui/motion) · MIT licensed
+**Live demo (Motion Manifesto):** [motionmanifesto.co.uk](https://motionmanifesto.co.uk)
 **Studio:** [Grafikui Studio](https://grafikui.com) · Self-Initiated · March 2026
 
 ---
 
 ## What It Is & What It Does
 
-Motion Manifesto is a **production-quality interactive reference** for UI motion design. It presents five fundamental interaction primitives — each paired with a named design principle — and exposes every animation parameter as a live, adjustable control.
+`@grafikui/motion` is a small set of motion primitives, design tokens, and hooks — the shared motion contract behind every interface Grafikui Studio ships. Six primitives, each paired with a named design principle, running in production across four real projects: grafikui.com itself, Comprent's compliance dashboard, Blocinsights, and the MOD-15 showcase.
 
-It is not a standard component library. It is not a generic documentation site. It is a **point of view**, built in working code. It serves as an architectural baseline and context engine for AI-assisted development, enforcing strict engineering standards for UI motion.
-
-The core argument: most product interfaces possess a motion language by accident. Animations are layered in component by component until the product moves — but doesn't feel like anything. Motion Manifesto demonstrates what the alternative looks like: every primitive carries an explicit principle, a motion contract, and a highly optimized implementation.
+It is not a generic animation library. It is not a documentation site. It is a **point of view**, built in working code: most product interfaces possess a motion language by accident, layered in component by component until the product moves but doesn't feel like anything. This package demonstrates the alternative — every primitive carries an explicit principle, a motion contract, and a highly optimized implementation. [Motion Manifesto](https://motionmanifesto.co.uk) is the interactive reference documenting it; this package is the real, installable result.
 
 ---
 
-## Core Technologies & Environment
+## Install
 
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite 7
-- **Styling**: Tailwind CSS v4
-- **Animation Runtime**: Framer Motion 12
-- **Smooth Scrolling**: Lenis
-- **Node Environment**: Node.js ecosystem (`type: module`)
+```bash
+npm install @grafikui/motion
+```
+
+Peer dependencies: `react`, `react-dom` (^19), and `framer-motion` (^12) for the default export; `gsap` (bundled) for the `/marketing` export.
+
+---
+
+## Usage
+
+### SaaS primitives (`@grafikui/motion`)
+
+Pure Framer Motion — no GSAP — for data-dense product UI where main-thread cost matters.
+
+```tsx
+import { Arc, Count, Nudge, State, motionTokens } from '@grafikui/motion';
+
+// Progress ring
+<Arc value={72} size={200} completionBehaviour="pulse" />
+
+// Animated number
+<Count value={1284} format="currency" prefix="$" />
+
+// Priority-mapped notification (level 1-4)
+<Nudge level={3} title="Deploy complete" message="v2.4.0 is live." dismissible />
+
+// Component state machine: empty | loading | partial | complete | error
+<State initialState="loading" transitionSpeed="normal" />
+```
+
+### Marketing primitives (`@grafikui/motion/marketing`)
+
+GSAP-backed, for cinematic orchestration work — kept in a separate export so it never bundles into SaaS code that can't afford it.
+
+```tsx
+import { Reveal, Sequence, useSequence } from '@grafikui/motion/marketing';
+
+<Reveal variant="rise" stagger staggerDelay={100}>
+  <h1>Hero copy</h1>
+  <p>Subhead</p>
+</Reveal>
+
+<Sequence animate={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 24 }} scrollTrigger>
+  <section>Scroll-triggered content</section>
+</Sequence>
+```
+
+### Tokens
+
+```ts
+import { motionTokens } from '@grafikui/motion/tokens/motion';
+import { colours } from '@grafikui/motion/tokens/colours';
+import { typography } from '@grafikui/motion/tokens/typography';
+```
+
+`motionTokens` exposes the shared duration/easing/spring values (`progress`, `entrance`, `transition`, `stagger`, per-level `nudge` variants) — the same numbers documented and demonstrated live at [motionmanifesto.co.uk](https://motionmanifesto.co.uk).
+
+---
+
+## The Six Primitives
+
+- **The Arc** (`Arc`) — *Completion is arrival, not arithmetic.* Circular progress, driven via `useMotionValue`, with a pulse/glow completion state kept structurally distinct from the mathematical state.
+- **The Count** (`Count`) — *Numbers must feel like they mean something.* Animated number counter (integer, percentage, currency, score) via a custom `useCountUp` hook, updating the DOM directly to avoid React render overhead.
+- **The Reveal** (`Reveal`, marketing export) — *Entering a space must be considered.* `AnimatePresence`-powered entrance orchestrator with four variants (fade, rise, spring, blur) and deterministic stagger.
+- **The State** (`State`) — *A component that cannot communicate its condition is broken.* A five-state machine (empty, loading, partial, complete, error) with isolated exit/enter via `AnimatePresence mode="popLayout"`.
+- **The Nudge** (`Nudge`) — *Attention should be earned.* Four urgency levels mapped directly to motion profile; level 4 bypasses the Framer Motion RAF loop entirely via raw CSS `@keyframes` to avoid compositor-thread cost on an infinite animation.
+- **The Sequence** (`Sequence`, marketing export) — *Orchestration creates hierarchy.* A GSAP + ScrollTrigger wrapper with automatic `gsap.context()` cleanup.
 
 ---
 
@@ -32,84 +92,44 @@ The core argument: most product interfaces possess a motion language by accident
 
 ### 1. Motion Primitive Contract
 
-All motion components must be treated as stateless, declarative primitives. The underlying philosophy dictates that primitives communicate states driven by external data, rather than maintaining their own complex orchestration logic.
+All motion components are treated as stateless, declarative primitives. Primitives communicate states driven by external data, rather than maintaining their own complex orchestration logic.
 
-#### The Arc (Progress Ring)
-- **Principle**: Completion should feel like arrival, not arithmetic.
-- **Mechanism**: Drives a single SVG stroke via `useMotionValue`. The visual completion state (pulse vs glow) is structurally distinct from the mathematical state. Glow utilizes CSS filters on underlays to prevent SVG `stroke-width` scaling artifacts.
-- **Constraints**: Uses `useMotionValueEvent` for React 19 compatibility. Does not trigger render cycles during intermediate progress updates.
+### 2. Accessibility Guarantees
 
-#### The Count (Animated Number)
-- **Principle**: Numbers that change should feel like they mean something.
-- **Mechanism**: Uses a custom `useCountUp` hook attached to a `useMotionValue` to update the DOM natively, removing sub-pixel jitter and expensive React CPU overhead on long durations.
-- **Constraints**: Formats (score, currency, percentage) are applied via pure transform strings, decoupling logic from component layout.
+- **Reduced motion**: every primitive respects `useReducedMotion`. When active, durations collapse to zero, spring animations downgrade to instant snaps, and the Nudge's physical error shake is suppressed.
+- **Keyboard navigation**: interactive primitives adhere to standard ARIA contracts.
 
-#### The Reveal (Entrance Orchestrator)
-- **Principle**: Entering a space should feel considered, not instantaneous.
-- **Mechanism**: An `AnimatePresence`-powered entrance orchestrator defining four strict, distinct variants (Fade, Rise, Spring, Blur).
-- **Constraints**: Stagger delays are computed deterministically via index offset mapping (`(delay/1000) + (index*staggerDelay)`), completely avoiding CSS `animation-delay` chains.
+### 3. Dual-Export Segregation
 
-#### The State (Component State Machine)
-- **Principle**: A component that cannot communicate its own condition is broken.
-- **Mechanism**: Tests visual isolation using `<AnimatePresence mode="popLayout">` to unblock the lifecycle, allowing entering components to render instantly while exiting elements finish out-of-band.
-- **Constraints**: The `error` state is orchestrated via a specific `times`-array keyframe payload mimicking a physical head-shake, circumventing arbitrary JS timeouts.
+The package is split into two entry points to protect Interaction to Next Paint (INP):
 
-#### The Nudge (Notification Urgency)
-- **Principle**: Attention should be earned, not demanded.
-- **Mechanism**: Maps component priority directly to its motion profile, avoiding generic cross-fade behaviors.
-- **Constraints**: Level 4 urgency completely bypasses the Framer Motion JS RAF loop. It leverages raw CSS `@keyframes` (`border-glow`) to prevent compositor thread blocking on infinite animations.
+- **`@grafikui/motion`** — pure Framer Motion. The real motion layer behind Comprent and Blocinsights, where GSAP's main-thread cost isn't affordable.
+- **`@grafikui/motion/marketing`** — re-exports GSAP for cinematic orchestration work. A bundler never pulls GSAP into code that only imports the default export.
 
-### 2. State & Control Boundaries (Gate 3.1)
+### 4. Implementation Notes
 
-Controls (`Slider`, `Selector`, `Toggle`, `ReplayButton`) are **strictly stateless presentational components**.
-- **Data Flow**: They never maintain their own state. Parent `App.tsx` remains the single source of truth via continuous `onChange` bubbling.
-- **Layout Constraints**: Controls operate as direct children of the `Section` grid. Deep nesting into flex-columns is strictly prohibited unless `col-span-*` is used.
-- **DOM Purity**: Control wrappers require `min-w-0` to participate safely in CSS grid algorithms. Text overflow in Selectors is managed via `whitespace-nowrap` within overflow-hidden containers.
-
-### 3. Accessibility Guarantees (Gate 3.3)
-
-- **Reduced Motion**: All animations MUST respect the `useReducedMotion` hook. When active, durations collapse to zero, spring animations downgrade to instant snaps, and physical error shakes are forcefully suppressed.
-- **Keyboard Navigation**: All interactive primitives and controls adhere to strict ARIA contracts (e.g. `role="switch"` explicitly mapped to `value` props on Toggles).
-
-### 4. Production Safeguards & Vulnerability Mitigation
-
-Passive documentation fails. To enforce the Motion Manifesto primitives without human review, the architecture deploys programmatic safeguards:
-
-1. **Eliminating Input Latency**: `mode="wait"` forces an explicit sequential block. We shift to `<AnimatePresence mode="popLayout">` to unblock the lifecycle, allowing entering components to render instantly while exiting elements animate out-of-band.
-2. **Thread-Safe Accessibility**: Relying purely on JS-driven `useReducedMotion` causes hydration races. We decouple threads by enforcing accessibility via immediate, zero-JS CSS overrides at the root (`@media (prefers-reduced-motion: reduce)`), paired with a global declarative `<MotionConfig reducedMotion="user">`.
-3. **Concrete Enforcement (Automated Gates)**:
-   - **Static Layer (ESLint)**: ESLint rules restrict imports from unapproved animation files or raw `framer-motion` definitions, forcing developers to consume primitives from the shared token/motion package.
-   - **Runtime/CI Layer (Lighthouse + k6)**: Hard-coded metrics in CI scripts automatically fault builds if Interaction to Next Paint (INP) exceeds 50ms or Total Blocking Time (TBT) breaches 150ms under load simulations.
-4. **Strict TypeScript Indexing**: Dynamic configuration objects are explicitly typed using strict utility generics (e.g., `Record<NudgeLevel, StrictVariant>`), guaranteeing rigorous compile-time checks.
-5. **Hardware-Accelerated Layout Projection**: `popLayout` transitions utilize Framer Motion's `layout` prop on both parent containers and nested children. This offloads container geometric shifts to the GPU compositor thread via `transform: scale` matrices and applies automatic inverse scaling to children, eliminating main-thread reflow bottlenecks without distorting typography.
-6. **Decoupled Volatile Dimensions**: Primitives handling rapidly mutating live strings (like `useCountUp`) render static, invisible bounding boxes (e.g., `000,000` or `100%`) into the standard layout flow. The live counter mutates endlessly within absolute space, incapable of forcing the parent to horizontally expand or cause layout thrashing.
-7. **Token-Safe String Interfaces**: Configuration payloads do not rely on loose strings. We intersect Framer Motion's `Variants` type with an explicit, auto-generated Template Literal type extracted directly from `index.css` (e.g., `ThemeColorToken`). Any typographical error mapping a color transition to a non-existent CSS variable triggers a fatal compiler panic.
+- **The Arc**: Uses `useMotionValueEvent` rather than a render-triggering state update for intermediate progress values. Glow completion uses CSS filters on underlays to avoid SVG `stroke-width` scaling artifacts.
+- **The Count**: Formats (`integer` / `percentage` / `currency` / `score`) are applied via pure transform strings, decoupling formatting logic from layout. A static, invisible placeholder of the final value locks the DOM's width up front, so the live counter can't cause layout shift while it animates.
+- **The Nudge**: Level 4 urgency bypasses the JS animation loop entirely for its pulse — a deliberate choice to keep an infinite animation off the compositor's main-thread budget.
+- **The Reveal**: Stagger delays are computed deterministically via index-offset mapping (`(delay/1000) + (index * staggerDelay/1000)`), not CSS `animation-delay` chains — keeps orchestration in one place instead of splitting timing logic between JS and CSS.
 
 ---
 
-## How to Utilize It
-
-### For Engineering & AI Agents
-This baseline README acts as a strict execution context. When modifying or extending `motion_manifesto`:
-1. **Respect Boundaries**: Never introduce state into presentational controls.
-2. **Prioritize Performance**: Any infinite or long-running animation MUST bypass the JS thread using native CSS keyframes (e.g., Level 4 Nudges).
-3. **Data-Driven Motion**: Continuously use `useMotionValue` and `useTransform` to drive UI directly to the DOM to bypass React render cycle overhead.
-
-### Local Development
+## Local Development (this repo)
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/motion-manifesto.git
-cd motion-manifesto
+git clone https://github.com/omrdev1/grafikui-motion.git
+cd grafikui-motion
 
-# Install dependencies
 npm install
-
-# Start local server (Vite)
-npm run dev
-
-# Create production build
-npm run build
+npm run build   # tsup — builds build/ (ESM + .d.ts) from src/
+npm run dev     # tsup --watch
 ```
 
-Click the **source icon** (`</>`) in any section of the running application to view the exact implementation code for that primitive.
+The live interactive reference — every primitive demonstrated with every parameter exposed as a control — lives in a separate repo and is deployed at [motionmanifesto.co.uk](https://motionmanifesto.co.uk).
+
+---
+
+## License
+
+MIT © Omar Ahmad — see [LICENSE](./LICENSE).
