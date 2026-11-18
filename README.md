@@ -10,7 +10,7 @@
 
 ## What It Is & What It Does
 
-`@grafikui/motion` is a small set of motion primitives, design tokens, and hooks — the shared motion contract behind every interface Grafikui Studio ships. Six primitives, each paired with a named design principle, running in production across four real projects: grafikui.com itself, Comprent's compliance dashboard, Blocinsights, and the MOD-15 showcase.
+`@grafikui/motion` is a small set of motion primitives, design tokens, and hooks. Six primitives, each paired with a named design principle. It is used in Comprent (Arc and Count), Blocinsights (Count), grafikui.com (motion tokens) and the MOD-15 showcase (Reveal).
 
 It is not a generic animation library. It is not a documentation site. It is a **point of view**, built in working code: most product interfaces possess a motion language by accident, layered in component by component until the product moves but doesn't feel like anything. This package demonstrates the alternative — every primitive carries an explicit principle, a motion contract, and a highly optimized implementation. [Motion Manifesto](https://motionmanifesto.co.uk) is the interactive reference documenting it; this package is the real, installable result.
 
